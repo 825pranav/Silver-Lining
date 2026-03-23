@@ -1,275 +1,213 @@
-# 🌩️✨ Silver Lining — Intelligent Gold–Silver Allocation Engine
+# Silver Lining — Gold/Silver Ratio Trading System
 
-**Silver Lining** is a multi-modal quantitative research system that generates
-**Buy / Hold / Sell signals for Gold vs Silver allocation** by combining:
+A regime-aware quantitative trading system for Gold vs Silver allocation.
+Combines HMM regime detection, three strategy sub-models, an XGBoost ensemble, walk-forward backtesting, and a live Streamlit dashboard.
 
-* 📊 Gold–Silver Ratio (GSR) dynamics
-* 📈 Momentum & volatility models
-* 🧠 Market regime detection
-* 🌍 Macro-risk indicators
-* 🗞️ NLP-based global sentiment analysis
-
-Instead of relying on naive mean-reversion strategies, Silver Lining adapts to
-**changing market conditions** and evaluates decisions using **walk-forward backtesting and stress testing**.
-
-> The goal is not price prediction — the goal is **decision quality under uncertainty**.
+> **Disclaimer:** For educational and research purposes only. Not financial advice.
 
 ---
 
-## 🎯 Objectives
+## What it does
 
-* Build a **regime-aware decision engine** for precious metals
-* Detect when GSR is likely to mean-revert vs trend
-* Incorporate **global instability and risk sentiment**
-* Simulate realistic trading performance with capital constraints
-* Provide explainable recommendations with confidence scores
+Given live market data, the system outputs one of three signals every day:
+
+| Signal | Meaning |
+|---|---|
+| `BUY_GOLD` | GSR expected to rise — gold outperforms |
+| `HOLD` | No clear edge |
+| `BUY_SILVER` | GSR expected to fall — silver outperforms |
+
+Each signal comes with a confidence score and full SHAP feature attribution explaining why the model chose that signal.
 
 ---
 
-## 🏗️ System Architecture
+## Quick start
 
-```
-Data Sources
-   │
-   ▼
-Data Ingestion Layer
-   │
-   ▼
-Feature Engineering Engine
-   ├── GSR Features
-   ├── Momentum & Volatility
-   ├── Macro Indicators
-   └── Sentiment Features
-   │
-   ▼
-Regime Detection + Strategy Models
-   │
-   ▼
-Signal Ensemble Engine
-   │
-   ▼
-Risk & Position Sizing
-   │
-   ▼
-Decision Fusion Model
-   │
-   ▼
-BUY / HOLD / SELL Recommendation
-   │
-   ▼
-Backtesting & Stress Testing
-   │
-   ▼
-Dashboard & Reports
+```bash
+# 1. Clone
+git clone https://github.com/825pranav/Silver-Lining.git
+cd Silver-Lining
+
+# 2. Create a virtual environment (recommended)
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Launch the dashboard
+streamlit run dashboard/streamlit_app.py
 ```
 
----
-
-## 📥 Data Sources
-
-### Market Data
-
-* Gold prices (spot / futures)
-* Silver prices (spot / futures)
-* Volume and volatility proxies
-
-### Macro Indicators
-
-* USD Index
-* Bond yields / real rates
-* Commodity index momentum
-
-### Sentiment Data
-
-* Financial news headlines
-* Social media finance discussions
-
-### Event Signals
-
-* Major geopolitical and financial stress events
+Open `http://localhost:8501` in your browser. The pipeline fetches live data and builds automatically on first load (takes ~1–2 minutes).
 
 ---
 
-## 📊 Feature Engineering
-
-### 🟡 Gold–Silver Ratio (GSR) Features
-
-* Raw GSR
-* Rolling Z-score
-* Historical percentile rank
-* Distance from regime mean
-* Rolling cointegration strength
-* Kalman filter equilibrium estimate
-
-### 📈 Momentum & Trend
-
-* EMA slopes (gold, silver, ratio)
-* MACD histogram
-* Breakout strength
-* Relative strength between metals
-
-### 🌪️ Volatility & Stress
-
-* ATR
-* Rolling volatility
-* GARCH volatility
-* Silver/Gold volatility ratio
-* Optional: VIX
-
-### 🌍 Macro Regime
-
-* USD trend
-* Yield curve slope
-* Inflation proxy trends
-* Commodity momentum
-
-### 🧠 Sentiment (NLP)
-
-* Gold sentiment score
-* Silver sentiment score
-* Fear / crisis keyword frequency
-* Sentiment momentum
-* Sentiment divergence
-
-### 🚨 Surge Detection
-
-* Volatility expansion detection
-* Abnormal volume detection
-* Sentiment anomaly detection
-* CUSUM structural break filters
-
----
-
-## 🧠 Models
-
-### Regime Detection
-
-* K-Means clustering (baseline)
-* Hidden Markov Models (advanced)
-
-### Strategy Models
-
-* Mean-reversion models
-* Momentum & trend models
-* Breakout detection
-* ML classifier for trade outcomes
-
-### Decision Fusion
-
-* Logistic regression (baseline)
-* Gradient Boosted Trees (advanced)
-* Bayesian model averaging (optional)
-
-### Risk & Position Sizing
-
-* Volatility-adjusted exposure
-* Drawdown-aware risk scaling
-* Confidence-weighted allocation
-
----
-
-## 🎯 Decision Output
-
-Each timestep produces:
-
-* ✅ BUY GOLD
-* 🔁 HOLD
-* 🚀 BUY SILVER
-
-With:
-
-* Confidence score
-* Risk level
-* Suggested position sizing
-
----
-
-## 🧪 Backtesting & Evaluation
-
-### Validation Method
-
-* Walk-forward time-series validation
-* No look-ahead bias
-
-### Performance Metrics
-
-* Equity curve
-* CAGR
-* Sharpe ratio
-* Maximum drawdown
-* Hit rate
-
-### Stress Testing
-
-* Financial crises
-* Inflation spikes
-* Low-volatility regimes
-
----
-
-## 📁 Repository Structure
+## Project structure
 
 ```
-SilverLining/
+Silver-Lining/
 │
 ├── data_pipeline/
-│   ├── price_fetcher.py
-│   ├── macro_fetcher.py
-│   ├── sentiment_scraper.py
+│   ├── price_fetcher.py        # Gold & Silver prices via yfinance (GC=F, SI=F)
+│   └── macro_fetcher.py        # DXY, commodity index, 10Y/2Y yield curve
 │
 ├── features/
-│   ├── gsr_features.py
-│   ├── momentum_features.py
-│   ├── volatility_features.py
-│   ├── sentiment_features.py
+│   ├── gsr_features.py         # GSR, rolling z-scores, slope, vol ratio
+│   ├── momentum_features.py    # EMA slopes, MACD, breakout, relative strength
+│   └── volatility_features.py  # ATR, rolling vol, GARCH(1,1) conditional vol
 │
 ├── models/
-│   ├── regime_detection.py
-│   ├── strategy_models.py
-│   ├── ensemble.py
+│   ├── regime_detection.py     # GaussianHMM → crisis / trending / risk_on / range_bound
+│   ├── strategy_models.py      # Mean-reversion, momentum, breakout sub-models
+│   └── ensemble.py             # XGBoost classifier + SHAP explanations
 │
 ├── backtesting/
-│   ├── simulator.py
-│   ├── metrics.py
+│   ├── simulator.py            # Walk-forward backtest, vol-based position sizing
+│   └── metrics.py              # Sharpe, CAGR, max drawdown, hit rate, Calmar
 │
 ├── experiments/
-│   ├── walk_forward.py
+│   └── walk_forward.py         # Rolling windows, IC analysis, alpha decay curve
 │
 ├── dashboard/
-│   ├── streamlit_app.py
+│   └── streamlit_app.py        # Live dashboard (dark theme, 4 tabs)
 │
-└── report.pdf
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## How the pipeline works
 
-* Python
-* Pandas / NumPy
-* Scikit-learn
-* PyTorch (optional ML models)
-* NLP: Transformers / Vader
-* Streamlit for visualization
+```
+yfinance / FRED
+      │
+      ▼
+price_fetcher  ──►  gsr_features
+macro_fetcher  ──►  momentum_features
+                    volatility_features
+                          │
+                          ▼
+                  regime_detection          ← GaussianHMM (4 states)
+                          │
+                          ▼
+                  strategy_models           ← 3 regime-conditioned sub-models
+                  (mean-rev / mom / bo)
+                          │
+                          ▼
+                  ensemble (XGBoost)        ← trained on 80% of data, tested on 20%
+                  + SHAP attribution
+                          │
+                          ▼
+                  backtesting/simulator     ← walk-forward, vol sizing, no lookahead
+                          │
+                          ▼
+                  dashboard (Streamlit)     ← live signal + charts
+```
+
+### Regime labels
+
+The HMM assigns each day to one of four regimes:
+
+| Regime | Characteristics |
+|---|---|
+| `crisis` | High volatility, extreme GSR dislocations |
+| `trending` | Strong directional moves in gold or silver |
+| `risk_on` | Low GSR z-score, risk appetite high |
+| `range_bound` | Low volatility, GSR oscillating around mean |
+
+Each strategy sub-model has per-regime confidence multipliers — mean-reversion is amplified in `crisis` and `range_bound`, momentum in `trending` and `risk_on`.
+
+### Ensemble target
+
+5-day forward GSR % change, discretised into 3 classes at ±0.30 σ:
+- Class 0 → `BUY_GOLD` (GSR rises)
+- Class 1 → `HOLD`
+- Class 2 → `BUY_SILVER` (GSR falls)
+
+Training uses the first 80% of the time series. No data from the test period touches the model during training.
 
 ---
 
-## 📌 Project Status
+## Dashboard tabs
 
-This project is under active development and is structured in phases:
+| Tab | Contents |
+|---|---|
+| **Market Overview** | Live Gold / Silver / GSR prices, backtest metrics, equity curve, drawdown |
+| **Live Signal** | Ensemble recommendation, SHAP waterfall, sub-model breakdown |
+| **Alpha Decay** | Rolling Sharpe, hit rate, IC composite + exponential decay fit + half-life |
+| **Regime Analysis** | Regime distribution, statistics, timeline, transition probability heatmap |
 
-1. ✅ Market data ingestion
-2. ✅ GSR + volatility feature engineering
-3. ⏳ Backtesting engine
-4. ⏳ Regime detection
-5. ⏳ Sentiment integration
-6. ⏳ Ensemble decision model
-7. ⏳ Interactive dashboard
+Sidebar controls: spread/slippage bps, walk-forward window and step size, refresh button.
 
 ---
 
-## ⚠️ Disclaimer
+## Running individual modules
 
-This project is for **educational and research purposes only**.
-It does not constitute financial advice or trading recommendations.
+Each module has a `main()` and can be run standalone:
 
+```bash
+# Fetch prices only
+python data_pipeline/price_fetcher.py
+
+# Fetch macro data
+python data_pipeline/macro_fetcher.py
+
+# Run regime detection on saved features
+python models/regime_detection.py
+
+# Run the full ensemble
+python models/ensemble.py
+
+# Walk-forward + alpha decay analysis
+python experiments/walk_forward.py
+```
+
+Output CSVs are saved to `data/`.
+
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---|---|
+| `yfinance` | Gold, Silver, DXY, commodity prices |
+| `pandas-datareader` | FRED (10Y/2Y Treasury yields) |
+| `hmmlearn` | Gaussian HMM regime detection |
+| `xgboost` | Ensemble classifier |
+| `shap` | Feature attribution / explainability |
+| `arch` | GARCH(1,1) volatility (optional — falls back to EWMA if missing) |
+| `streamlit` | Dashboard |
+| `plotly` | Interactive charts |
+
+Install everything:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Porting to another machine
+
+1. Clone the repo and run `pip install -r requirements.txt` — that's it.
+2. No API keys required. All data is fetched from public sources (Yahoo Finance, FRED).
+3. The dashboard fetches live data on first load; results are cached for 1 hour.
+4. On Windows, if running modules directly in a terminal, set UTF-8 mode first (`chcp 65001`). The dashboard handles this internally.
+
+---
+
+## Backtest signal convention
+
+```
+signal > 0   →  BUY_SILVER  (GSR falling, silver outperforms)
+signal < 0   →  BUY_GOLD    (GSR rising,  gold outperforms)
+signal ≈ 0   →  HOLD
+```
+
+Position sizing is volatility-adjusted: `size = min(TARGET_VOL / realized_vol, 1.0)`.
+No-lookahead enforced: signal at close_t → position entered at open_t+1.
