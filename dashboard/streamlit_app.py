@@ -805,7 +805,8 @@ def main():
         c2.metric("Silver (USD)", f"${last['silver_close']:.2f}")
         c3.metric("GSR",          f"{last['gsr']:.2f}")
         c4.metric("GSR z-score (30d)", f"{last['gsr_zscore_30']:+.2f}")
-        current_regime = last.get("regime", "—")
+        _regime_val = last.get("regime")
+        current_regime = _regime_val if pd.notna(_regime_val) else "—"
         c5.metric("Current Regime", str(current_regime).replace("_", " ").title())
 
         st.divider()
