@@ -242,7 +242,6 @@ def fit_and_predict(
         num_class=3,
         subsample=0.8,
         colsample_bytree=0.8,
-        use_label_encoder=False,
         eval_metric="mlogloss",
         random_state=random_state,
         verbosity=0,

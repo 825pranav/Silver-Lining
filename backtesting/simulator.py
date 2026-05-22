@@ -33,6 +33,9 @@ MAX_POSITION_SIZE = 1.0   # cap at 100 % (no leverage)
 PURGE_GAP_DAYS = 20       # trading-day gap between train end and test start
                            # covers the longest lookback window (gsr_zscore_30)
 
+ZSCORE_THRESHOLD = 1.0    # |z-score| above which mean-reversion signal fires
+SLOPE_THRESHOLD  = 0.5    # max |gsr_slope| to confirm ratio is decelerating
+
 
 # ---------------------------------------------------------------------------
 # Signal logic  (unchanged from original)
@@ -47,9 +50,9 @@ def _signal(row: pd.Series) -> str:
     No data from t+1 or later is accessed here.
     """
     # Mean reversion: GSR stretched + momentum decelerating
-    if row["gsr_zscore_30"] > 1 and abs(row["gsr_slope"]) < 0.5:
+    if row["gsr_zscore_30"] > ZSCORE_THRESHOLD and abs(row["gsr_slope"]) < SLOPE_THRESHOLD:
         return "silver"    # ratio high → silver undervalued
-    if row["gsr_zscore_30"] < -1 and abs(row["gsr_slope"]) < 0.5:
+    if row["gsr_zscore_30"] < -ZSCORE_THRESHOLD and abs(row["gsr_slope"]) < SLOPE_THRESHOLD:
         return "gold"
 
     # Trend-following fallback  (original logic)
