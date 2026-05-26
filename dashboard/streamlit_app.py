@@ -18,6 +18,7 @@
 # Run from repo root:
 #   streamlit run dashboard/streamlit_app.py
 #
+# Requires: streamlit, pandas, plotly, hmmlearn, xgboost, shap
 # Required:  pip install streamlit plotly
 # Optional:  pip install hmmlearn xgboost shap
 #            (dashboard degrades gracefully without them)
@@ -102,6 +103,19 @@ _SIGNAL_COLORS = {
 }
 
 # =============================================================================
+# Helpers
+# =============================================================================
+
+def _macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    """Return (macd, signal_line, histogram) for *series*."""
+    ema_f = compute_ema(series, fast)
+    ema_s = compute_ema(series, slow)
+    macd  = ema_f - ema_s
+    sig   = compute_ema(macd, signal)
+    return macd, sig, macd - sig
+
+
+# =============================================================================
 # Pipeline builder  (cached — rebuilds at most once per hour)
 # =============================================================================
 
@@ -151,17 +165,8 @@ def _build_pipeline(spread: float, slippage: float):
     df["gsr_ema_30"]    = compute_ema(df["gsr"], 30)
     df["gsr_ema_slope"] = df["gsr_ema_10"] - df["gsr_ema_30"]
 
-    _g12 = compute_ema(df["gold_close"], 12)
-    _g26 = compute_ema(df["gold_close"], 26)
-    df["gold_macd"]        = _g12 - _g26
-    df["gold_macd_signal"] = compute_ema(df["gold_macd"], 9)
-    df["gold_macd_hist"]   = df["gold_macd"] - df["gold_macd_signal"]
-
-    _s12 = compute_ema(df["silver_close"], 12)
-    _s26 = compute_ema(df["silver_close"], 26)
-    df["silver_macd"]        = _s12 - _s26
-    df["silver_macd_signal"] = compute_ema(df["silver_macd"], 9)
-    df["silver_macd_hist"]   = df["silver_macd"] - df["silver_macd_signal"]
+    df["gold_macd"],   df["gold_macd_signal"],   df["gold_macd_hist"]   = _macd(df["gold_close"])
+    df["silver_macd"], df["silver_macd_signal"], df["silver_macd_hist"] = _macd(df["silver_close"])
 
     _w = 20
     _gh = df["gold_close"].rolling(_w).max()
