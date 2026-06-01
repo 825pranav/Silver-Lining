@@ -72,6 +72,17 @@ def hit_rate(returns: pd.Series) -> float:
     return float((active > 0).mean())
 
 
+def sortino(returns: pd.Series, periods_per_year: int = 252) -> float:
+    """Annualised Sortino ratio (risk-free rate = 0, penalises only downside vol)."""
+    downside = returns[returns < 0]
+    if len(downside) == 0:
+        return 0.0
+    downside_std = downside.std()
+    if downside_std == 0 or np.isnan(downside_std):
+        return 0.0
+    return float((returns.mean() / downside_std) * np.sqrt(periods_per_year))
+
+
 def calmar(cagr_val: float, max_dd_val: float) -> float:
     """Calmar ratio = CAGR / |max drawdown|. Returns 0 if drawdown is zero."""
     if max_dd_val == 0 or np.isnan(max_dd_val):
@@ -109,7 +120,7 @@ def compute_all(
 
     Returns
     -------
-    dict with keys: sharpe, cagr, max_drawdown, hit_rate, calmar.
+    dict with keys: sharpe, sortino, cagr, max_drawdown, hit_rate, calmar.
     """
     if position_changes is not None:
         returns = apply_costs(returns, position_changes, spread=spread, slippage=slippage)
@@ -120,6 +131,7 @@ def compute_all(
 
     return {
         "sharpe":       round(sharpe(returns, periods_per_year), 4),
+        "sortino":      round(sortino(returns, periods_per_year), 4),
         "cagr":         round(cagr_val, 4),
         "max_drawdown": round(max_dd, 4),
         "hit_rate":     round(hit_rate(returns), 4),
