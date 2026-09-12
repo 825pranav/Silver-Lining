@@ -1,9 +1,13 @@
 import yfinance as yf
 import pandas as pd
 import os
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 def fetch_prices():
-    print("🚀 Downloading gold and silver futures data...")
+    print("[run] Downloading gold and silver futures data...")
     
     # GC=F is Gold, SI=F is Silver
     # We download both at once to let yfinance align the dates for us
@@ -35,7 +39,7 @@ def main():
     try:
         df = fetch_prices()
         
-        print("\n✅ Successfully synced Gold and Silver data!")
+        print("\n[ok] Successfully synced Gold and Silver data!")
         print(f"Total trading days captured: {len(df)}")
         print("\n--- Latest Market Snapshot ---")
         print(df.tail())
@@ -43,10 +47,10 @@ def main():
         # Ensure directory exists before saving
         os.makedirs("data", exist_ok=True)
         df.to_csv("data/raw_metals_data.csv")
-        print("\n💾 Saved to data/raw_metals_data.csv")
+        print("\n[saved] Saved to data/raw_metals_data.csv")
 
     except Exception as e:
-        print(f"❌ Error occurred: {e}")
+        print(f"[error] Error occurred: {e}")
 
 if __name__ == "__main__":
     main()

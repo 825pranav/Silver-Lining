@@ -43,6 +43,10 @@ if _PROJECT_ROOT not in sys.path:
 
 from backtesting.simulator import _run_fold
 from backtesting.metrics   import compute_all, sharpe as _sharpe, hit_rate as _hit_rate
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -149,7 +153,8 @@ def fit_exponential_decay(
     if finite_mask.sum() < 4:
         return dict(alpha_initial=np.nan, alpha_floor=np.nan,
                     decay_rate=np.nan, half_life_windows=np.nan,
-                    half_life_days=np.nan, fit_success=False)
+                    half_life_days=np.nan, r_squared=np.nan,
+                    observed_windows=int(finite_mask.sum()), fit_success=False)
 
     t_fit, y_fit = t[finite_mask], y[finite_mask]
 
@@ -168,26 +173,43 @@ def fit_exponential_decay(
                 maxfev=5000,
             )
         a, b, c = popt
-        if b > 1e-9:
-            hl_windows = float(np.log(2) / b)
-            hl_days    = hl_windows * step_size_days
-        else:
+
+        # Goodness of fit, so a degenerate solution can be recognised.
+        resid = y_fit - _exp_decay(t_fit, *popt)
+        ss_tot = float(((y_fit - y_fit.mean()) ** 2).sum())
+        r2 = float(1.0 - (resid ** 2).sum() / ss_tot) if ss_tot > 0 else np.nan
+
+        hl_windows = float(np.log(2) / b) if b > 1e-9 else np.inf
+
+        # A half-life longer than the observed span is not a measurement. When
+        # the fit returns a near-zero decay rate the exponential has collapsed
+        # to a flat line, and ln(2)/b explodes: a b of 1.5e-5 over 20-day
+        # windows produced a reported half-life of 899,462 days (2,463 years).
+        # Beyond twice the observed span there is no decay to measure, so say
+        # so rather than emit a number the sample cannot support.
+        n_windows = int(finite_mask.sum())
+        if not np.isfinite(hl_windows) or hl_windows > 2 * n_windows:
             hl_windows = np.inf
             hl_days    = np.inf
+        else:
+            hl_days = hl_windows * step_size_days
 
         return dict(
             alpha_initial     = round(a + c, 6),
             alpha_floor       = round(c, 6),
             decay_rate        = round(b, 6),
-            half_life_windows = round(hl_windows, 2),
-            half_life_days    = round(hl_days, 1),
+            half_life_windows = hl_windows if np.isinf(hl_windows) else round(hl_windows, 2),
+            half_life_days    = hl_days if np.isinf(hl_days) else round(hl_days, 1),
+            r_squared         = round(r2, 4) if np.isfinite(r2) else np.nan,
+            observed_windows  = n_windows,
             fit_success       = True,
         )
 
     except Exception:
         return dict(alpha_initial=np.nan, alpha_floor=np.nan,
                     decay_rate=np.nan, half_life_windows=np.nan,
-                    half_life_days=np.nan, fit_success=False)
+                    half_life_days=np.nan, r_squared=np.nan,
+                    observed_windows=int(finite_mask.sum()), fit_success=False)
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +261,7 @@ def rolling_walk_forward(
     window_idx = 0
     start = 0
 
-    print(f"\n🔄 Rolling Walk-Forward | window={window_size}d | step={step_size}d | "
+    print(f"\n[walk-forward] Rolling Walk-Forward | window={window_size}d | step={step_size}d | "
           f"purge={purge_days}d | signals={signal_cols}")
     print("-" * 72)
 
@@ -458,7 +480,7 @@ def run_full_analysis(
         loaded = False
         for path in candidates:
             if path and os.path.exists(path):
-                print(f"🚀 Loading {path}...")
+                print(f"[run] Loading {path}...")
                 df = pd.read_csv(path, parse_dates=["Date"])
                 df.set_index("Date", inplace=True)
                 print(f"   {len(df)} rows | {len(df.columns)} columns")
@@ -493,7 +515,7 @@ def run_full_analysis(
 
     agg_summary = aggregate_summary(fold_summary)
 
-    print("\n📊 Aggregate Summary Across All Windows:")
+    print("\n[stats] Aggregate Summary Across All Windows:")
     print(agg_summary.to_string())
 
     # ── Save outputs ─────────────────────────────────────────────────────────
@@ -509,7 +531,7 @@ def run_full_analysis(
         decay_curve.to_csv(dc_path)
         agg_summary.to_csv(as_path)
 
-        print(f"\n💾 Saved:")
+        print(f"\n[saved] Saved:")
         print(f"   {fs_path}")
         print(f"   {dc_path}")
         print(f"   {as_path}")
@@ -590,10 +612,10 @@ def _plot_decay_curve(decay_curve: pd.DataFrame, decay_params: dict) -> None:
         out_path = os.path.join(out_dir, "alpha_decay_curve.png")
         plt.savefig(out_path, dpi=150, bbox_inches="tight")
         plt.close()
-        print(f"📈 Plot saved to {out_path}")
+        print(f"[chart] Plot saved to {out_path}")
 
     except Exception as e:
-        print(f"⚠️  Plot skipped: {e}")
+        print(f"[warn] Plot skipped: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -613,4 +635,11 @@ if __name__ == "__main__":
                         "rolling_hit_rate", "ic_composite",
                         "normalized_alpha"]].to_string())
 
-    print(f"\n⏱️  Alpha Half-Life: {decay_params.get('half_life_days', 'N/A')} days")
+    _hl = decay_params.get("half_life_days", float("nan"))
+    _r2 = decay_params.get("r_squared", "n/a")
+    _nw = decay_params.get("observed_windows", "?")
+    print()
+    if _hl == float("inf"):
+        print(f"[time] Alpha half-life: no decay detectable over {_nw} windows (R^2={_r2})")
+    else:
+        print(f"[time] Alpha half-life: {_hl} days (R^2={_r2})")

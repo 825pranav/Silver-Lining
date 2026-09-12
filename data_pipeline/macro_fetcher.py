@@ -3,10 +3,14 @@ import pandas as pd
 import pandas_datareader.data as web
 import os
 from datetime import datetime, timedelta
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 
 def fetch_macro():
-    print("🚀 Downloading macro data (DXY, treasury yields, commodity index)...")
+    print("[run] Downloading macro data (DXY, treasury yields, commodity index)...")
 
     end = datetime.today()
     start = end - timedelta(days=2 * 365)
@@ -28,7 +32,7 @@ def fetch_macro():
     # --- FRED: 10-year and 2-year constant-maturity treasury yields ---
     # DGS10 = 10-Year Treasury Constant Maturity Rate (%)
     # DGS2  = 2-Year Treasury Constant Maturity Rate (%)
-    print("📡 Fetching treasury yield data from FRED...")
+    print(" Fetching treasury yield data from FRED...")
     treasury_10y = web.DataReader("DGS10", "fred", start, end)
     treasury_2y = web.DataReader("DGS2", "fred", start, end)
 
@@ -60,17 +64,17 @@ def main():
     try:
         df = fetch_macro()
 
-        print("\n✅ Successfully synced macro data!")
+        print("\n[ok] Successfully synced macro data!")
         print(f"Total trading days captured: {len(df)}")
         print("\n--- Latest Macro Snapshot ---")
         print(df.tail())
 
         os.makedirs("data", exist_ok=True)
         df.to_csv("data/macro_data.csv")
-        print("\n💾 Saved to data/macro_data.csv")
+        print("\n[saved] Saved to data/macro_data.csv")
 
     except Exception as e:
-        print(f"❌ Error occurred: {e}")
+        print(f"[error] Error occurred: {e}")
 
 
 if __name__ == "__main__":

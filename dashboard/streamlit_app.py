@@ -119,7 +119,7 @@ def _macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
 # Pipeline builder  (cached — rebuilds at most once per hour)
 # =============================================================================
 
-@st.cache_data(ttl=3600, show_spinner="⚙️  Building pipeline from live data…")
+@st.cache_data(ttl=3600, show_spinner="  Building pipeline from live data…")
 def _build_pipeline(spread: float, slippage: float):
     """
     Fetch live prices, compute all features using imported functions,
@@ -240,7 +240,7 @@ def _build_pipeline(spread: float, slippage: float):
     return df, capital, rets, metrics, warns
 
 
-@st.cache_data(ttl=86400, show_spinner="🔄 Running walk-forward analysis…")
+@st.cache_data(ttl=86400, show_spinner="[walk-forward] Running walk-forward analysis…")
 def _build_walk_forward(df_json: str, window_size: int, step_size: int,
                         spread: float, slippage: float):
     """
@@ -674,7 +674,7 @@ def _sub_signal_table(last_row: pd.Series) -> pd.DataFrame:
 def main():
     st.set_page_config(
         page_title="Silver Lining — GSR Dashboard",
-        page_icon="📈",
+        page_icon="[chart]",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -760,10 +760,10 @@ def main():
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
-        st.title("⚙️ Controls")
+        st.title(" Controls")
 
         st.subheader("Live Data")
-        if st.button("🔄 Refresh Now", use_container_width=True):
+        if st.button("[walk-forward] Refresh Now", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
@@ -778,8 +778,8 @@ def main():
 
         st.divider()
         st.caption("Pipeline status")
-        st.write(f"HMM regime detection : {'✅' if _HMM_OK else '❌ hmmlearn missing'}")
-        st.write(f"Ensemble (XGBoost)   : {'✅' if _ENSEMBLE_OK else '❌ xgboost/shap missing'}")
+        st.write(f"HMM regime detection : {'[ok]' if _HMM_OK else '[error] hmmlearn missing'}")
+        st.write(f"Ensemble (XGBoost)   : {'[ok]' if _ENSEMBLE_OK else '[error] xgboost/shap missing'}")
 
     # ── Build pipeline ────────────────────────────────────────────────────────
     with st.spinner("Loading…"):
@@ -792,10 +792,10 @@ def main():
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
     tab_overview, tab_signal, tab_alpha, tab_regime = st.tabs([
-        "📈 Market Overview",
-        "🎯 Live Signal",
-        "📊 Alpha Decay",
-        "🔄 Regime Analysis",
+        "[chart] Market Overview",
+        "[target] Live Signal",
+        "[stats] Alpha Decay",
+        "[walk-forward] Regime Analysis",
     ])
 
     # =========================================================================

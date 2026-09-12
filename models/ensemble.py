@@ -33,6 +33,10 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 try:
     import xgboost as xgb
@@ -224,7 +228,7 @@ def fit_and_predict(
     X_train, y_train = X_valid.iloc[:split_idx], y_valid.iloc[:split_idx]
     X_test             = X_valid.iloc[split_idx:]
 
-    print(f"🚀 Training XGBoost ensemble...")
+    print(f"[run] Training XGBoost ensemble...")
     print(f"   Train: {len(X_train)} rows  ({X_train.index[0].date()} → {X_train.index[-1].date()})")
     print(f"   Test : {len(X_test)}  rows  ({X_test.index[0].date() if len(X_test) else 'n/a'} → "
           f"{X_test.index[-1].date() if len(X_test) else 'n/a'})")
@@ -263,7 +267,7 @@ def fit_and_predict(
     )
 
     # ── SHAP values ──────────────────────────────────────────────────────────
-    print("🔍 Computing SHAP explanations...")
+    print("[fit] Computing SHAP explanations...")
     shap_df = _compute_shap(model, X_valid)
 
     # ── Evaluate on test set ─────────────────────────────────────────────────
@@ -271,7 +275,7 @@ def fit_and_predict(
         test_preds  = pred_classes[split_idx:]
         test_labels = y_valid.iloc[split_idx:].values
         accuracy    = (test_preds == test_labels).mean()
-        print(f"\n📊 Out-of-sample accuracy: {accuracy:.2%}")
+        print(f"\n[stats] Out-of-sample accuracy: {accuracy:.2%}")
 
         # Per-class accuracy
         for cls, name in LABEL_MAP.items():
@@ -288,7 +292,7 @@ def fit_and_predict(
     for col in shap_df.columns:
         df_out[col] = shap_df[col]
 
-    print(f"\n✅ Ensemble complete. New columns: ensemble_signal, ensemble_confidence, "
+    print(f"\n[ok] Ensemble complete. New columns: ensemble_signal, ensemble_confidence, "
           f"+ {len(shap_df.columns)} shap_* columns")
 
     return df_out
@@ -337,7 +341,7 @@ def main():
         signals_path = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "data", "features_with_signals.csv")
         )
-        print(f"🚀 Loading {signals_path}...")
+        print(f"[run] Loading {signals_path}...")
         df = pd.read_csv(signals_path, parse_dates=["Date"])
         df.set_index("Date", inplace=True)
         print(f"   {len(df)} rows, {len(df.columns)} columns")
@@ -349,7 +353,7 @@ def main():
                 "mr_signal", "mom_signal", "bo_signal"]
         print(df_out[snap].tail(10).to_string())
 
-        print("\n📊 Top-10 SHAP Feature Importances:")
+        print("\n[stats] Top-10 SHAP Feature Importances:")
         print(shap_feature_importance(df_out, top_n=10).to_string(index=False))
 
         out_path = os.path.normpath(
@@ -357,10 +361,10 @@ def main():
         )
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         df_out.to_csv(out_path)
-        print(f"\n💾 Saved to {out_path}")
+        print(f"\n[saved] Saved to {out_path}")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[error] Error: {e}")
         raise
 
 

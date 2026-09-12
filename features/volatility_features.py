@@ -13,8 +13,15 @@
 
 import pandas as pd
 import numpy as np
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+from paths import FEATURE_PATH, RAW_DATA_PATH, BACKTEST_RESULTS_PATH  # noqa: E402
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
-FEATURE_PATH = "../data/features.csv"
 
 
 def compute_atr(close, window=14):

@@ -150,7 +150,15 @@ Sidebar controls: spread/slippage bps, walk-forward window and step size, refres
 
 Each module has a `main()` and can be run standalone:
 
+Every script resolves its data paths from the repository root, so these work
+from anywhere:
+
 ```bash
+# Rebuild the feature set — run in this order, each stage adds columns
+python features/gsr_features.py
+python features/momentum_features.py
+python features/volatility_features.py
+
 # Fetch prices only
 python data_pipeline/price_fetcher.py
 

@@ -13,13 +13,20 @@
 import os
 import numpy as np
 import pandas as pd
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+from paths import FEATURE_PATH, RAW_DATA_PATH, BACKTEST_RESULTS_PATH  # noqa: E402
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 try:
     from backtesting.metrics import compute_all
 except ImportError:
     from metrics import compute_all
 
-FEATURE_PATH = "../data/features.csv"
 
 # ---------------------------------------------------------------------------
 # Position sizing parameters
@@ -183,7 +190,7 @@ def run_backtest(
     cap, rets, changes = _run_fold(df, spread=spread, slippage=slippage)
     metrics = compute_all(cap, rets)   # returns already net of costs
 
-    print("\n📊 Single-Pass Backtest Results")
+    print("\n[stats] Single-Pass Backtest Results")
     print("=" * 40)
     for k, v in metrics.items():
         print(f"   {k:<20} {v:>10}")
@@ -195,9 +202,8 @@ def run_backtest(
     out["capital"]      = cap
     out["daily_return"] = rets
 
-    os.makedirs("../data", exist_ok=True)
-    out.to_csv("../data/backtest_results.csv")
-    print("\n💾 Saved to data/backtest_results.csv")
+    out.to_csv(BACKTEST_RESULTS_PATH)
+    print("\n[saved] Saved to data/backtest_results.csv")
 
     return out, metrics
 
@@ -248,7 +254,7 @@ def walk_forward_backtest(
     fold_records = []
     all_capital  = pd.Series(dtype=float, name="capital")
 
-    print(f"\n🔄 Walk-Forward Validation | folds={n_splits} | purge={purge_days}d | "
+    print(f"\n[walk-forward] Walk-Forward Validation | folds={n_splits} | purge={purge_days}d | "
           f"test_window={test_size}d")
     print("-" * 72)
 
@@ -288,7 +294,7 @@ def walk_forward_backtest(
     numeric = [c for c in numeric if c in fold_df.columns]
 
     if not fold_df.empty:
-        print("\n📊 Walk-Forward Summary (mean across folds):")
+        print("\n[stats] Walk-Forward Summary (mean across folds):")
         for col in numeric:
             print(f"   {col:<20} {fold_df[col].mean():>10.4f}")
 

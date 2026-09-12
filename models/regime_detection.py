@@ -12,6 +12,10 @@ import numpy as np
 import pandas as pd
 from hmmlearn.hmm import GaussianHMM
 from sklearn.preprocessing import StandardScaler
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 # ---------------------------------------------------------------------------
 # Exact column names consumed from each upstream feature module
@@ -146,7 +150,7 @@ def fit_and_label(
     best_model = None
     best_score = -np.inf
 
-    print(f"🔍 Fitting GaussianHMM ({n_states} states, {n_restarts} restarts)...")
+    print(f"[fit] Fitting GaussianHMM ({n_states} states, {n_restarts} restarts)...")
     for i in range(n_restarts):
         model = GaussianHMM(
             n_components=n_states,
@@ -195,7 +199,7 @@ def fit_and_label(
     print(f"\n  Best log-likelihood : {best_score:.2f}")
     print(f"  Observations used   : {len(X_raw)}")
 
-    print("\n📊 Transition Probability Matrix (row = from, col = to):")
+    print("\n[stats] Transition Probability Matrix (row = from, col = to):")
     trans_df = pd.DataFrame(
         best_model.transmat_,
         index=regime_labels,
@@ -203,13 +207,13 @@ def fit_and_label(
     ).round(4)
     print(trans_df.to_string())
 
-    print("\n📈 Per-State Feature Means (original scale):")
+    print("\n[chart] Per-State Feature Means (original scale):")
     means_display = state_means.copy()
     means_display.index = regime_labels
     means_display.index.name = "regime"
     print(means_display.round(6).to_string())
 
-    print("\n🏷️  Regime Distribution:")
+    print("\n  Regime Distribution:")
     dist = df_out["regime"].value_counts()
     for regime, count in dist.items():
         pct = 100 * count / dist.sum()
@@ -229,7 +233,7 @@ def main():
         feature_path = os.path.join(os.path.dirname(__file__), "..", "data", "features.csv")
         feature_path = os.path.normpath(feature_path)
 
-        print(f"🚀 Loading features from {feature_path}...")
+        print(f"[run] Loading features from {feature_path}...")
         df = pd.read_csv(feature_path, parse_dates=["Date"])
         df.set_index("Date", inplace=True)
         print(f"   {len(df)} rows, {len(df.columns)} columns loaded.")
@@ -245,10 +249,10 @@ def main():
         )
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         df_out.to_csv(out_path)
-        print(f"\n💾 Saved to {out_path}")
+        print(f"\n[saved] Saved to {out_path}")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[error] Error: {e}")
         raise
 
 

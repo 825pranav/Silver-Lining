@@ -22,6 +22,10 @@
 
 import numpy as np
 import pandas as pd
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+import console as _console  # noqa: F401,E402  UTF-8 safe stdout
 
 # ---------------------------------------------------------------------------
 # Regime-conditioned signal multipliers
@@ -258,7 +262,7 @@ def build_strategy_signals(df: pd.DataFrame) -> pd.DataFrame:
         "mom_signal", "mom_confidence",
         "bo_signal",  "bo_confidence",
     ]
-    print("✅ Strategy signals built:", new_cols)
+    print("[ok] Strategy signals built:", new_cols)
     print(f"   Non-null rows: {df[new_cols].dropna().shape[0]} / {len(df)}")
 
     return df
@@ -287,7 +291,7 @@ def main():
         path = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "data", "features_with_regimes.csv")
         )
-        print(f"🚀 Loading {path}...")
+        print(f"[run] Loading {path}...")
         df = pd.read_csv(path, parse_dates=["Date"])
         df.set_index("Date", inplace=True)
         print(f"   {len(df)} rows, {len(df.columns)} columns")
@@ -303,10 +307,10 @@ def main():
             os.path.join(os.path.dirname(__file__), "..", "data", "features_with_signals.csv")
         )
         df.to_csv(out_path)
-        print(f"\n💾 Saved to {out_path}")
+        print(f"\n[saved] Saved to {out_path}")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[error] Error: {e}")
         raise
 
 

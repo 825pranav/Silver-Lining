@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated analysis outputs — regenerate with the scripts that write them
+data/features_with_regimes.csv
+data/walk_forward_folds.csv
+data/walk_forward_summary.csv
+data/alpha_decay_curve.csv
+data/macro_data.csv
+*.png
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
