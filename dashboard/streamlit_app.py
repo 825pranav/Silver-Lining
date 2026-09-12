@@ -234,6 +234,21 @@ def _build_pipeline(spread: float, slippage: float):
         df["ensemble_confidence"] = None
 
     # ── 8. single-pass backtest  (_run_fold from simulator) ──────────────────
+    # -- 7b. the served decision --------------------------------------------
+    # strategy.decide is the same function experiments/validate.py measures, so
+    # the recommendation shown here is the one with a published track record.
+    # The ensemble below is kept as a second opinion, clearly labelled, because
+    # it has never been walk-forward tested.
+    from strategy import decide as _decide
+    _reg_series = df["regime"] if "regime" in df.columns else None
+    _last_regime = (_reg_series.dropna().iloc[-1]
+                    if _reg_series is not None and _reg_series.notna().any() else None)
+    _d = _decide(df.iloc[-1], _last_regime)
+    df.attrs["served_decision"] = {
+        "label": _d.label, "asset": _d.asset, "size": _d.size,
+        "regime": _d.regime, "rationale": _d.rationale,
+    }
+
     capital, rets, _ = _run_fold(df, spread=spread, slippage=slippage)
     metrics = compute_all(capital, rets)
 
@@ -603,6 +618,28 @@ def _add_regime_bands(fig: go.Figure, regime_series: pd.Series,
             )
 
 
+def _served_badge(d: dict) -> None:
+    """
+    The recommendation the backtest actually measured.
+
+    The card used to render `ensemble_signal` while the equity curve beside it
+    came from a different strategy entirely, so the performance on screen did
+    not belong to the advice on screen. This renders `strategy.decide`, which
+    experiments/validate.py walk-forward tests.
+    """
+    colour = {"gold": "#f1c40f", "silver": "#bdc3c7"}.get(d.get("asset") or "", "#8b949e")
+    st.markdown(
+        f'<div style="background:#0d1117;border:1px solid {colour};border-radius:10px;'
+        f'padding:18px 22px;text-align:center;box-shadow:0 0 18px {colour}55;">'
+        f'<div style="color:{colour};font-size:1.6rem;font-weight:800;letter-spacing:1px;">'
+        f'{d["label"]}</div>'
+        f'<div style="color:#8b949e;margin-top:6px;">position size '
+        f'{d["size"]*100:.0f}% of capital</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(d["rationale"])
+
+
 def _signal_badge(signal: str | None, confidence: float | None) -> None:
     """Render a glowing terminal recommendation card with confidence gauge."""
     if signal is None:
@@ -837,10 +874,16 @@ def main():
         col_rec, col_sub = st.columns([1, 2])
 
         with col_rec:
-            _signal_badge(
-                last.get("ensemble_signal"),
-                last.get("ensemble_confidence"),
-            )
+            _served = df.attrs.get("served_decision")
+            if _served:
+                _served_badge(_served)
+            else:
+                _signal_badge(last.get("ensemble_signal"),
+                              last.get("ensemble_confidence"))
+
+            with st.expander("Second opinion: XGBoost ensemble (not walk-forward tested)"):
+                _signal_badge(last.get("ensemble_signal"),
+                              last.get("ensemble_confidence"))
 
             st.subheader("Current Regime")
             regime_color = _REGIME_COLORS.get(str(current_regime), "#cccccc")

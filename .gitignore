@@ -10,6 +10,8 @@ data/walk_forward_folds.csv
 data/walk_forward_summary.csv
 data/alpha_decay_curve.csv
 data/macro_data.csv
+data/regime_model.joblib
+data/validation_folds.csv
 *.png
 
 # Tooling

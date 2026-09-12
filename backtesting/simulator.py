@@ -48,48 +48,19 @@ SLOPE_THRESHOLD  = 0.5    # max |gsr_slope| to confirm ratio is decelerating
 # Signal logic  (unchanged from original)
 # ---------------------------------------------------------------------------
 
-def _signal(row: pd.Series) -> str:
-    """
-    Compute the trading signal from a single feature row.
+# The signal lives in strategy.py so the dashboard serves exactly what this
+# backtest measures. _signal and _position_size used to be defined here, and
+# the live recommendation came from a different model entirely.
+from strategy import decide as _decide  # noqa: E402
 
-    Called with the ROW AT CLOSE OF DAY t; the returned signal becomes the
-    position that earns the return from day t close to day t+1 close.
-    No data from t+1 or later is accessed here.
-    """
-    # Mean reversion: GSR stretched + momentum decelerating
-    if row["gsr_zscore_30"] > ZSCORE_THRESHOLD and abs(row["gsr_slope"]) < SLOPE_THRESHOLD:
-        return "silver"    # ratio high → silver undervalued
-    if row["gsr_zscore_30"] < -ZSCORE_THRESHOLD and abs(row["gsr_slope"]) < SLOPE_THRESHOLD:
-        return "gold"
+def _signal(row):
+    """Kept as a thin alias: existing callers expect an asset string."""
+    return _decide(row).asset
 
-    # Trend-following fallback  (original logic)
-    if row["gsr_slope"] > 0:
-        return "gold"
-    return "silver"
+def _position_size(row, sig):
+    from strategy import position_size
+    return position_size(row, sig)
 
-
-# ---------------------------------------------------------------------------
-# Position sizing  (new)
-# ---------------------------------------------------------------------------
-
-def _position_size(row: pd.Series, sig: str) -> float:
-    """
-    Inverse-volatility position sizing.
-
-    size = target_daily_vol / realised_daily_vol,  capped at MAX_POSITION_SIZE.
-    Uses gold_vol_20 or silver_vol_20 (already in features.csv).
-    Falls back to maximum size when vol is unavailable or zero.
-    """
-    vol_col = "gold_vol_20" if sig == "gold" else "silver_vol_20"
-    vol = row.get(vol_col, np.nan)
-    if pd.isna(vol) or vol <= 0:
-        return MAX_POSITION_SIZE
-    return min(TARGET_DAILY_VOL / vol, MAX_POSITION_SIZE)
-
-
-# ---------------------------------------------------------------------------
-# Core fold runner  (used by both single-pass and walk-forward)
-# ---------------------------------------------------------------------------
 
 def _run_fold(
     df: pd.DataFrame,

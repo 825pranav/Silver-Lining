@@ -13,8 +13,13 @@ def fetch_prices():
     # We download both at once to let yfinance align the dates for us
     tickers = ["GC=F", "SI=F"]
     
-    # Fetching 2 years of daily data
-    data = yf.download(tickers, period="2y", interval="1d")
+    # Full available history. Two years covers a single market regime - the
+    # 2024-25 metals rally - and a model fitted there learns "be long metals".
+    # The full series reaches back to 2000 and includes the 2013 gold crash,
+    # the 2015 decline and the 2021-22 flat stretch, which is what makes an
+    # out-of-sample test mean anything.
+    period = os.getenv("SL_HISTORY_PERIOD", "max")
+    data = yf.download(tickers, period=period, interval="1d", auto_adjust=True)
     
     # In recent yfinance versions, this returns a MultiIndex. 
     # We just want the 'Close' prices.
