@@ -21,3 +21,6 @@ arch>=6.3
 # Dashboard
 streamlit>=1.35
 plotly>=5.20
+
+# Tests
+pytest>=8
