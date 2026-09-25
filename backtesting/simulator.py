@@ -51,11 +51,13 @@ SLOPE_THRESHOLD  = 0.5    # max |gsr_slope| to confirm ratio is decelerating
 # The signal lives in strategy.py so the dashboard serves exactly what this
 # backtest measures. _signal and _position_size used to be defined here, and
 # the live recommendation came from a different model entirely.
-from strategy import decide as _decide  # noqa: E402
+from strategy import SERVED, add_trend_features, decide as _decide, simulate  # noqa: E402
+
 
 def _signal(row):
     """Kept as a thin alias: existing callers expect an asset string."""
-    return _decide(row).asset
+    return _decide(row, config=SERVED).asset
+
 
 def _position_size(row, sig):
     from strategy import position_size
@@ -68,67 +70,27 @@ def _run_fold(
     slippage: float = 0.0001,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
-    Run one backtest pass on *df*.
+    Run the served strategy (`strategy.SERVED`) once over *df*.
 
-    No-lookahead guarantee
-    ----------------------
-    At bar i the function:
-      1. Earns the return from bar i-1 → i using the POSITION SET AT BAR i-1.
-      2. Observes bar i's features to compute a new signal.
-      3. Stores that signal as the position that will earn bar i+1's return.
+    Delegates to `strategy.simulate`, the same loop experiments/validate.py
+    measures: a position decided at the close of bar t is traded at the close
+    of t+1, and costs are spread + slippage per unit of turnover. Regime
+    probabilities are not supplied here, so a regime-based configuration would
+    fall back to its no-regime behaviour; the served one uses no regimes.
 
     Returns
     -------
     capital_curve    : pd.Series  (index = df.index[1:])
     returns_series   : pd.Series  net daily returns
-    changes_series   : pd.Series  1 where position changed, 0 otherwise
+    changes_series   : pd.Series  1 where the position changed, 0 otherwise
     """
-    capital       = 1.0
-    position      = None   # "gold" | "silver" | None (flat at start)
-    pos_size      = 0.0
-
-    capital_list  = []
-    returns_list  = []
-    changes_list  = []
-
-    for i in range(1, len(df)):
-        today     = df.iloc[i]
-        yesterday = df.iloc[i - 1]
-
-        # ── Step 1: realise return for this bar ──────────────────────────────
-        # Position was set at yesterday's close; earns yesterday→today return.
-        if position == "gold":
-            gross = today["gold_close"] / yesterday["gold_close"] - 1
-        elif position == "silver":
-            gross = today["silver_close"] / yesterday["silver_close"] - 1
-        else:
-            gross = 0.0
-
-        # ── Step 2: decide new position from today's features (no lookahead) ─
-        new_sig  = _signal(today)
-        new_size = _position_size(today, new_sig)
-        switched = int(new_sig != position and position is not None)
-
-        # Transaction cost applied on the day we execute the switch
-        cost    = switched * (spread + slippage)
-        net_ret = pos_size * gross - cost
-
-        capital *= (1 + net_ret)
-
-        capital_list.append(capital)
-        returns_list.append(net_ret)
-        changes_list.append(switched)
-
-        # ── Step 3: carry new position forward ───────────────────────────────
-        position = new_sig
-        pos_size = new_size
-
-    idx = df.index[1:]
-    return (
-        pd.Series(capital_list, index=idx, name="capital"),
-        pd.Series(returns_list, index=idx, name="return"),
-        pd.Series(changes_list, index=idx, name="switched"),
-    )
+    if SERVED.trend_lookback and f"gold_mom_{SERVED.trend_lookback}" not in df.columns:
+        df = add_trend_features(df, (SERVED.trend_lookback,))
+    sim = simulate(df, config=SERVED, cost=spread + slippage).iloc[1:]
+    rets = sim["ret"].rename("return")
+    capital = (1 + rets).cumprod().rename("capital")
+    changes = (sim["turnover"] > 1e-12).astype(int).rename("switched")
+    return capital, rets, changes
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +119,7 @@ def run_backtest(
     if df is None:
         df = pd.read_csv(FEATURE_PATH, parse_dates=["Date"])
         df.set_index("Date", inplace=True)
+    df = add_trend_features(df)   # full history, so slices keep their lookback
 
     cap, rets, changes = _run_fold(df, spread=spread, slippage=slippage)
     metrics = compute_all(cap, rets)   # returns already net of costs
@@ -217,6 +180,7 @@ def walk_forward_backtest(
     if df is None:
         df = pd.read_csv(FEATURE_PATH, parse_dates=["Date"])
         df.set_index("Date", inplace=True)
+    df = add_trend_features(df)   # full history, so slices keep their lookback
 
     n = len(df)
     # Each test fold covers (n / (n_splits + 1)) bars; train is everything before.

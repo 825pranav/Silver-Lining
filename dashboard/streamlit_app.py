@@ -233,23 +233,34 @@ def _build_pipeline(spread: float, slippage: float):
         df["ensemble_signal"]     = None
         df["ensemble_confidence"] = None
 
-    # ── 8. single-pass backtest  (_run_fold from simulator) ──────────────────
-    # -- 7b. the served decision --------------------------------------------
-    # strategy.decide is the same function experiments/validate.py measures, so
-    # the recommendation shown here is the one with a published track record.
-    # The ensemble below is kept as a second opinion, clearly labelled, because
-    # it has never been walk-forward tested.
-    from strategy import decide as _decide
-    _reg_series = df["regime"] if "regime" in df.columns else None
-    _last_regime = (_reg_series.dropna().iloc[-1]
-                    if _reg_series is not None and _reg_series.notna().any() else None)
-    _d = _decide(df.iloc[-1], _last_regime)
+    # ── 8. the served decision and its backtest ───────────────────────────────
+    # strategy.simulate calls strategy.decide on every bar with the served
+    # configuration, the same loop experiments/validate.py measures, so the
+    # recommendation and the equity curve shown here belong to one strategy.
+    # The ensemble above is kept as a second opinion, clearly labelled, because
+    # it has never been walk-forward tested. The regime chart comes from a
+    # full-history HMM fit and is context only: the served configuration does
+    # not use regimes.
+    from strategy import SERVED, add_trend_features
+    df = add_trend_features(df)
+    _probs = None
+    if SERVED.uses_regimes and _HMM_OK:
+        from regime_model import RegimeModel
+        with _silence(), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _probs = RegimeModel(**SERVED.regime_kwargs).fit(df).predict_proba(df)
+    from strategy import simulate as _simulate
+    _sim = _simulate(df, probs=_probs, config=SERVED, cost=spread + slippage)
+    _last = _sim.iloc[-1]
+    _size = float(_last["gold_weight"] + _last["silver_weight"])
     df.attrs["served_decision"] = {
-        "label": _d.label, "asset": _d.asset, "size": _d.size,
-        "regime": _d.regime, "rationale": _d.rationale,
+        "label": "STAND ASIDE" if _last["asset"] is None else f"HOLD {str(_last['asset']).upper()}",
+        "asset": _last["asset"], "size": _size,
+        "regime": _last["regime"], "rationale": _last["rationale"],
     }
 
-    capital, rets, _ = _run_fold(df, spread=spread, slippage=slippage)
+    rets = _sim["ret"].iloc[1:].rename("return")
+    capital = (1 + rets).cumprod().rename("capital")
     metrics = compute_all(capital, rets)
 
     return df, capital, rets, metrics, warns
