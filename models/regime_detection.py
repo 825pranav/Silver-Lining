@@ -82,13 +82,17 @@ def _assign_regimes(state_means: pd.DataFrame) -> dict:
 
     # 3. risk_on: lowest GSR z-score among remaining (silver outperforming gold)
     remaining = [s for s in state_means.index if s not in used]
+    if not remaining:
+        return assignment
     risk_state = int(state_means.loc[remaining, gsr_col].idxmin())
     assignment[risk_state] = "risk_on"
     used.add(risk_state)
 
-    # 4. trending: the last unassigned state
-    remaining = [s for s in state_means.index if s not in used]
-    assignment[remaining[0]] = "trending"
+    # 4. trending: every state still unassigned (one when there are four
+    #    states; none with three; two with five)
+    for s in state_means.index:
+        if s not in used:
+            assignment[int(s)] = "trending"
 
     return assignment
 
